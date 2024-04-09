@@ -1,0 +1,242 @@
+// SUPERVISOR AGENT (SV) ---------------------------------------------------------------
+//ADD IINITIAL BELIEFS
++RA is free
++HA is free
++WA is free
++MA is free
++T1 is free
++T2 is free
++T1 is moved
++T2 is moved
++manufacturing is on
+!run manufacturing
++!run manufacturing
+: manufacturing is on
+<-
+Check (existing pieces) in stock [by perception] and !Alert if there are any missing pieces
+Find (possible welding points) with (existing pieces)
+Check if missing pieces are now available in stock (if is there any)
+// ROBOTIC AGENT (RA) - TASK ASSIGNMENT -- CHECK CONDITIONS BASED ON DECISION MATRICES
+if ((All pieces in stock) and (RA is free) and (T1 is free) and (T1 is moved)) {
+.send(RA, achieve, prepare(T1))
+-RA is free
+-T1 is free
+-T1 is moved
+}
+else if ((All pieces in stock) and (RA is free) and (T2 is free) and (T2 is moved)) {
+.send(RA, achieve, prepare(T1))
+-RA is free
+-T2 is free
+-T2 is moved
+}
+else if (Some of pieces in stock) and (RA is free) and (T1 is free) and (T1 is moved)) {
+.send(RA, achieve, prepare_incomplete(T1))
+-RA is free
+-T1 is free
+-T1 is moved
+}
+else if (Some of pieces in stock) and (RA is free) and (T2 is free) and (T2 is moved)) {
+.send(RA, achieve, prepare_incomplete(T2))
+-RA is free
+-T2 is free
+-T2 is moved
+}
+else if ((missing pieces are now available in stock) and (RA is free) and (T1 is free) and (T1 is
+prepared incomplete)) {
+.send(RA, achieve, prepare complete(T1, missing pieces))
+-RA is free
+-T1 is free
+-T1 is prepared incomplete
+}
+else if ((missing pieces are now available in stock) and (RA is free) and (T2 is free) and (T2 is
+prepared incomplete)) {
+.send(RA, achieve, prepare complete(T2, missing pieces))
+-RA is free
+-T2 is free
+-T2 is prepared incomplete
+}
+// WELDING AGENT (WA) - TASK ASSIGNMENT
+if ((All pieces in stock) and (WA is free) and (T1 is free) and (T1 is prepared)) {
+.send(WA, achieve, weld(T1))
+-WA is free
+-T1 is free
+-T1 is prepared
+}
+else if ((All pieces in stock) and (WA is free) and (T2 is free) and (T2 is prepared)) {
+.send(WA, achieve, weld(T2))
+-WA is free
+-T2 is free
+Page 20 of 24
+-T2 is prepared
+}
+else if ((Some of pieces in stock) and (WA is free) and (T1 is free) and (T1 is prepared)) {
+.send(WA, achieve, weld incomplete(T1, possible welding points))
+-WA is free
+-T1 is free
+-T1 is prepared
+}
+else if ((Some of pieces in stock) and (WA is free) and (T2 is free) and (T2 is prepared)) {
+.send(WA, achieve, weld incomplete(T2, possible welding points))
+-WA is free
+-T2 is free
+-T2 is prepared
+}
+else if ((missing pieces are now prepared in T1) and (WA is free) and (T1 is free) and (T1 is welded
+incomplete)) {
+.send(WA, achieve, weld complete(T1, missing welding points))
+-WA is free
+-T1 is free
+-T1 is welded incomplete
+}
+else if ((missing pieces are now prepared in T2) and (WA is free) and (T2 is free) and (T2 is welded
+incomplete)) {
+.send(WA, achieve, weld complete(T2, missing welding points))
+-WA is free
+-T2 is free
+-T2 is welded incomplete
+}
+// MOVING AGENT (MA) - TASK ASSIGNMENT
+if ((MA is free) and (T1 is free) and (T1 is welded)) {
+.send(MA, achieve, move(T1))
+-MA is free
+-T1 is free
+-T1 is welded
+}
+else if ((MA is free) and (T2 is free) and (T2 is welded)) {
+.send(MA, achieve, move(T2))
+-MA is free
+-T2 is free
+-T2 is welded
+}
+!run manufacturing.
+// UPDATE SUPERVISOR SELF-BELIEFS BASED ON THE BELIEFS RECEIVED FROM MANUFACTURING AGENTS
++T1 is prepared
+: true
+<-
++RA is free
++T1 is free
++T2 is prepared
+: true
+<-
++RA is free
++T2 is free
++T1 is prepared incomplete
+: true
+<-
++RA is free
++T1 is free
++T2 is prepared incomplete
+: true
+<-
++RA is free
++T2 is free
++T1 is welded
+: true
+<-
++WA is free
++T1 is free
++T2 is welded
+: true
+Page 21 of 24
+<-
++WA is free
++T2 is free
++T1 is welded incomplete
+: true
+<-
++WA is free
++T1 is free
++T2 is welded incomplete
+: true
+<-
++WA is free
++T2 is free
++T1 is moved
+: true
+<-
++MA is free
++T1 is free
++T2 is moved
+: true
+<-
++MA is free
++T2 is free
+// ROBOTIC AGENT (RA) ------------------------------------------------------------------
++!prepare(Table)
+: true
+<-
+for (pieces 1 to 6 in Table) {
+pick and place(piece[i], Table, HA[i])
+.send(Table.HA[i], achieve, hold piece())
+wait for belief(Table.HA[i] held)
+}
+if (Table = T1) {.send(SV, tell, T1 is prepared)}
+else if (Table = T2) {.send(SV, tell, T2 is prepared)
++!prepare incomplete(Table, existing pieces)
+:true
+<-
+for (existing pieces in Table) {
+pick and place(piece[i], Table, HA[i])
+.send(Table.HA[i], achieve, hold piece())
+wait for belief(Table.HA[i] held)
+}
+if (Table = T1) {.send(SV, tell, T1 is prepared incomplete)}
+else if (Table = T2) {.send(SV, tell, T2 is prepared incomplete)
++!prepare complete(Table, missing pieces)
+:true
+<-
+for (missing pieces in Table) {
+pick and place(piece[i], Table, HA[i])
+send(Table.HA[i], achieve, hold piece())
+wait for belief(Table.HA[i] held)
+}
+if (Table = T1) {.send(SV, tell, T1 is prepared)}
+if (Table = T2) {.send(SV, tell, T2 is prepared)}
+// HOLDING AGENT (HA[i]) x 6 agents per table -------------------------------------------
++!hold piece()
+: true
+<-
+grasp()
+.send(RA, tell, Table.HA[i] held)
++!release piece()
+: true
+<-
+release()
+.send(MA, tell, Table.HA[i] released)
+// WELDING AGENT (WA) ------------------------------------------------------------------
+Page 22 of 24
++!weld(Table)
+: true
+<-
+for (welding points 1 to 5 in Table) {
+weld(point[i])
+}
+if (Table = T1) {.send(SV, tell, T1 is welded)}
+else if (Table = T2) {.send(SV, tell, T2 is welded)}
++! weld incomplete(Table, possible welding points)
+: true
+<-
+for (possible welding points in Table) {
+weld(point[i])
+}
+if (Table = T1) {.send(SV, tell, T1 is welded incomplete)}
+else if (Table = T2) {.send(SV, tell, T2 is welded incomplete)}
++ weld complete(Table, missing welding points)
+: true
+<-
+for (missing welding points in Table) {
+weld(point[i])
+}
+if (Table = T1) {.send(SV, tell, T1 is welded)}
+else if (Table = T2) {.send(SV, tell, T2 is welded)}
+// MOVING AGENT (MA) ------------------------------------------------------------------
++!move(Table)
+: true
+<-
+for (pieces 1 to 6 in Table) {
+.send(Table.HA, achieve, release piece())
+}
+.wait for (all Table.HA[i] released)
+move frame from(Table)
+if (Table = T1) {.send(SV, tell, T1 is moved)}
+else if (Table = T2) {.send(SV, tell, T2 is moved)}
